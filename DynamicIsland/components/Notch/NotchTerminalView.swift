@@ -123,10 +123,9 @@ struct NotchTerminalView: View {
                 Divider()
                     .padding(.horizontal, 8)
 
-                // Terminal content — .id(sessionGeneration) forces
-                // representable recreation only after an explicit restart.
+                // Terminal content — the containerView is stable across
+                // notch close/open cycles; updateNSView handles restart.
                 TerminalNSViewRepresentable(terminalManager: terminalManager)
-                    .id(terminalManager.sessionGeneration)
                     .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                     .padding(.horizontal, 8)
                     .padding(.bottom, 8)

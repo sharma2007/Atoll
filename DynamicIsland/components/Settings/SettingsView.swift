@@ -794,6 +794,14 @@ struct SettingsView: View {
             SettingsSearchEntry(tab: .terminal, title: "Font size", keywords: ["terminal", "font", "text size"], highlightID: SettingsTab.terminal.highlightID(for: "Font size")),
             SettingsSearchEntry(tab: .terminal, title: "Terminal opacity", keywords: ["terminal", "opacity", "transparency"], highlightID: SettingsTab.terminal.highlightID(for: "Terminal opacity")),
             SettingsSearchEntry(tab: .terminal, title: "Maximum height", keywords: ["terminal", "height", "size"], highlightID: SettingsTab.terminal.highlightID(for: "Maximum height")),
+            SettingsSearchEntry(tab: .terminal, title: "Background color", keywords: ["terminal", "background", "color", "theme"], highlightID: SettingsTab.terminal.highlightID(for: "Background color")),
+            SettingsSearchEntry(tab: .terminal, title: "Foreground color", keywords: ["terminal", "foreground", "text color", "theme"], highlightID: SettingsTab.terminal.highlightID(for: "Foreground color")),
+            SettingsSearchEntry(tab: .terminal, title: "Cursor color", keywords: ["terminal", "cursor", "caret", "color"], highlightID: SettingsTab.terminal.highlightID(for: "Cursor color")),
+            SettingsSearchEntry(tab: .terminal, title: "Bold as bright", keywords: ["terminal", "bold", "bright", "colors"], highlightID: SettingsTab.terminal.highlightID(for: "Bold as bright")),
+            SettingsSearchEntry(tab: .terminal, title: "Cursor style", keywords: ["terminal", "cursor", "block", "underline", "bar", "blink"], highlightID: SettingsTab.terminal.highlightID(for: "Cursor style")),
+            SettingsSearchEntry(tab: .terminal, title: "Scrollback lines", keywords: ["terminal", "scrollback", "buffer", "history"], highlightID: SettingsTab.terminal.highlightID(for: "Scrollback lines")),
+            SettingsSearchEntry(tab: .terminal, title: "Option as Meta", keywords: ["terminal", "option", "meta", "alt", "key"], highlightID: SettingsTab.terminal.highlightID(for: "Option as Meta")),
+            SettingsSearchEntry(tab: .terminal, title: "Mouse reporting", keywords: ["terminal", "mouse", "reporting", "vim", "tmux"], highlightID: SettingsTab.terminal.highlightID(for: "Mouse reporting")),
         ]
     }
 
@@ -7016,6 +7024,14 @@ struct TerminalSettings: View {
     @Default(.terminalFontSize) var terminalFontSize
     @Default(.terminalOpacity) var terminalOpacity
     @Default(.terminalMaxHeightFraction) var terminalMaxHeightFraction
+    @Default(.terminalCursorStyle) var terminalCursorStyle
+    @Default(.terminalScrollbackLines) var terminalScrollbackLines
+    @Default(.terminalOptionAsMeta) var terminalOptionAsMeta
+    @Default(.terminalMouseReporting) var terminalMouseReporting
+    @Default(.terminalBoldAsBright) var terminalBoldAsBright
+    @Default(.terminalBackgroundColor) var terminalBackgroundColor
+    @Default(.terminalForegroundColor) var terminalForegroundColor
+    @Default(.terminalCursorColor) var terminalCursorColor
 
     private func highlightID(_ title: String) -> String {
         SettingsTab.terminal.highlightID(for: title)
@@ -7023,6 +7039,13 @@ struct TerminalSettings: View {
 
     private var formattedMaxHeight: String {
         "\(Int(terminalMaxHeightFraction * 100))% of screen"
+    }
+
+    private var cursorStyleBinding: Binding<TerminalCursorStyleOption> {
+        Binding(
+            get: { TerminalCursorStyleOption(rawValue: terminalCursorStyle) ?? .blinkBlock },
+            set: { terminalCursorStyle = $0.rawValue }
+        )
     }
 
     var body: some View {
@@ -7033,12 +7056,13 @@ struct TerminalSettings: View {
             } header: {
                 Text("General")
             } footer: {
-                Text("Adds a Guake-style dropdown terminal tab. The terminal runs a shell session that persists while the notch is open.")
+                Text("Adds a Guake-style dropdown terminal tab. The terminal session persists across notch open/close cycles.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             if enableTerminalFeature {
+                // MARK: Shell
                 Section {
                     HStack {
                         Text("Shell path")
@@ -7049,7 +7073,12 @@ struct TerminalSettings: View {
                             .multilineTextAlignment(.trailing)
                     }
                     .settingsHighlight(id: highlightID("Shell path"))
+                } header: {
+                    Text("Shell")
+                }
 
+                // MARK: Appearance
+                Section {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Text("Font size")
@@ -7095,6 +7124,109 @@ struct TerminalSettings: View {
                     Text("Appearance")
                 }
 
+                // MARK: Colors
+                Section {
+                    ColorPicker("Background", selection: $terminalBackgroundColor, supportsOpacity: false)
+                        .onChange(of: terminalBackgroundColor) { _, newValue in
+                            terminalManager.applyBackgroundColor(newValue)
+                        }
+                        .settingsHighlight(id: highlightID("Background color"))
+
+                    ColorPicker("Foreground", selection: $terminalForegroundColor, supportsOpacity: false)
+                        .onChange(of: terminalForegroundColor) { _, newValue in
+                            terminalManager.applyForegroundColor(newValue)
+                        }
+                        .settingsHighlight(id: highlightID("Foreground color"))
+
+                    ColorPicker("Cursor", selection: $terminalCursorColor, supportsOpacity: false)
+                        .onChange(of: terminalCursorColor) { _, newValue in
+                            terminalManager.applyCursorColor(newValue)
+                        }
+                        .settingsHighlight(id: highlightID("Cursor color"))
+
+                    Toggle("Bold text as bright colors", isOn: $terminalBoldAsBright)
+                        .onChange(of: terminalBoldAsBright) { _, newValue in
+                            terminalManager.applyBoldAsBright(newValue)
+                        }
+                        .settingsHighlight(id: highlightID("Bold as bright"))
+                } header: {
+                    Text("Colors")
+                } footer: {
+                    Text("When bold-as-bright is off, bold text uses a heavier font weight instead of bright ANSI colors.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                // MARK: Cursor
+                Section {
+                    Picker("Cursor style", selection: cursorStyleBinding) {
+                        ForEach(TerminalCursorStyleOption.allCases, id: \.self) { style in
+                            Text(style.displayName).tag(style)
+                        }
+                    }
+                    .onChange(of: terminalCursorStyle) { _, newValue in
+                        if let style = TerminalCursorStyleOption(rawValue: newValue) {
+                            terminalManager.applyCursorStyle(style)
+                        }
+                    }
+                    .settingsHighlight(id: highlightID("Cursor style"))
+                } header: {
+                    Text("Cursor")
+                }
+
+                // MARK: Scrollback
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Scrollback lines")
+                            Spacer()
+                            Text("\(terminalScrollbackLines)")
+                                .foregroundStyle(.secondary)
+                                .monospacedDigit()
+                        }
+                        Slider(
+                            value: Binding(
+                                get: { Double(terminalScrollbackLines) },
+                                set: { terminalScrollbackLines = Int($0) }
+                            ),
+                            in: 100...10000,
+                            step: 100
+                        )
+                        .onChange(of: terminalScrollbackLines) { _, newValue in
+                            terminalManager.applyScrollback(newValue)
+                        }
+                    }
+                    .settingsHighlight(id: highlightID("Scrollback lines"))
+                } header: {
+                    Text("Scrollback")
+                } footer: {
+                    Text("Number of lines kept in the scrollback buffer. Higher values use more memory.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                // MARK: Input
+                Section {
+                    Toggle("Option as Meta key", isOn: $terminalOptionAsMeta)
+                        .onChange(of: terminalOptionAsMeta) { _, newValue in
+                            terminalManager.applyOptionAsMeta(newValue)
+                        }
+                        .settingsHighlight(id: highlightID("Option as Meta"))
+
+                    Toggle("Allow mouse reporting", isOn: $terminalMouseReporting)
+                        .onChange(of: terminalMouseReporting) { _, newValue in
+                            terminalManager.applyMouseReporting(newValue)
+                        }
+                        .settingsHighlight(id: highlightID("Mouse reporting"))
+                } header: {
+                    Text("Input")
+                } footer: {
+                    Text("Option as Meta sends Esc+key instead of macOS special characters. Mouse reporting forwards mouse events to terminal applications like vim or tmux.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                // MARK: Actions
                 Section {
                     Button("Restart Shell") {
                         terminalManager.restartShell()
