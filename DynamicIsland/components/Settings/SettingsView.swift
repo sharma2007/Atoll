@@ -851,6 +851,7 @@ struct SettingsView: View {
             SettingsSearchEntry(tab: .stats, title: "Enable system stats monitoring", keywords: ["stats", "monitoring"], highlightID: SettingsTab.stats.highlightID(for: "Enable system stats monitoring")),
             SettingsSearchEntry(tab: .stats, title: "Stop monitoring after closing the notch", keywords: ["stats", "auto stop"], highlightID: SettingsTab.stats.highlightID(for: "Stop monitoring after closing the notch")),
             SettingsSearchEntry(tab: .stats, title: "CPU Usage", keywords: ["cpu", "graph"], highlightID: SettingsTab.stats.highlightID(for: "CPU Usage")),
+            SettingsSearchEntry(tab: .stats, title: "Temperature unit", keywords: ["cpu", "temperature", "celsius", "fahrenheit"], highlightID: SettingsTab.stats.highlightID(for: "Temperature unit")),
             SettingsSearchEntry(tab: .stats, title: "Memory Usage", keywords: ["memory", "ram"], highlightID: SettingsTab.stats.highlightID(for: "Memory Usage")),
             SettingsSearchEntry(tab: .stats, title: "GPU Usage", keywords: ["gpu", "graphics"], highlightID: SettingsTab.stats.highlightID(for: "GPU Usage")),
             SettingsSearchEntry(tab: .stats, title: "Network Activity", keywords: ["network", "graph"], highlightID: SettingsTab.stats.highlightID(for: "Network Activity")),
@@ -6157,6 +6158,7 @@ struct StatsSettings: View {
     @Default(.showGpuGraph) var showGpuGraph
     @Default(.showNetworkGraph) var showNetworkGraph
     @Default(.showDiskGraph) var showDiskGraph
+    @Default(.cpuTemperatureUnit) var cpuTemperatureUnit
     
     private func highlightID(_ title: String) -> String {
         SettingsTab.stats.highlightID(for: title)
@@ -6246,6 +6248,16 @@ struct StatsSettings: View {
                 Section {
                     Defaults.Toggle("CPU Usage", key: .showCpuGraph)
                         .settingsHighlight(id: highlightID("CPU Usage"))
+
+                    if showCpuGraph {
+                        Picker("Temperature unit", selection: $cpuTemperatureUnit) {
+                            ForEach(LockScreenWeatherTemperatureUnit.allCases) { unit in
+                                Text(unit.rawValue).tag(unit)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .settingsHighlight(id: highlightID("Temperature unit"))
+                    }
                     Defaults.Toggle("Memory Usage", key: .showMemoryGraph)
                         .settingsHighlight(id: highlightID("Memory Usage"))
                     Defaults.Toggle("GPU Usage", key: .showGpuGraph)
