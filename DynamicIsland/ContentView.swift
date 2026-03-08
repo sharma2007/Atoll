@@ -150,6 +150,7 @@ struct ContentView: View {
     @State private var lastHapticTime: Date = Date()
     @State private var hoverClickMonitor: Any?
     @State private var hoverClickLocalMonitor: Any?
+    @State private var stickyTerminalClickMonitor: Any?
 
     @State private var gestureProgress: CGFloat = .zero
     @State private var skipGestureActiveDirection: MusicManager.SkipDirection?
@@ -424,6 +425,9 @@ struct ContentView: View {
                             isHovering = false
                         }
                     }
+                    if newState == .closed {
+                        removeStickyTerminalClickMonitor()
+                    }
                 }
                 .onChange(of: vm.isBatteryPopoverActive) { _, newPopoverState in
                     runAfter(0.1) {
@@ -606,6 +610,7 @@ struct ContentView: View {
         .onDisappear {
             hoverTask?.cancel()
             stopHoverClickMonitor()
+            removeStickyTerminalClickMonitor()
             cancelMusicControlWindowSync()
             hideMusicControlWindow()
             cancelMusicControlVisibilityTimer()
@@ -1586,6 +1591,23 @@ struct ContentView: View {
         }
     }
 
+    private func installStickyTerminalClickMonitor() {
+        guard stickyTerminalClickMonitor == nil else { return }
+        stickyTerminalClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown]) { [weak vm] _ in
+            Task { @MainActor in
+                guard let vm, vm.notchState == .open else { return }
+                vm.close()
+            }
+        }
+    }
+
+    private func removeStickyTerminalClickMonitor() {
+        if let stickyTerminalClickMonitor {
+            NSEvent.removeMonitor(stickyTerminalClickMonitor)
+            self.stickyTerminalClickMonitor = nil
+        }
+    }
+
     // MARK: - Hover Management
     
     /// Handle hover state changes with debouncing
@@ -1594,6 +1616,7 @@ struct ContentView: View {
 
         if hovering {
             startHoverClickMonitor()
+            removeStickyTerminalClickMonitor()
         } else {
             stopHoverClickMonitor()
         }
@@ -1642,6 +1665,12 @@ struct ContentView: View {
 
                     if self.vm.notchState == .open && !self.shouldPreventAutoClose() {
                         self.vm.close()
+                    } else if self.vm.notchState == .open
+                                && Defaults[.terminalStickyMode]
+                                && self.coordinator.currentView == .terminal {
+                        // Terminal sticky mode kept the notch open — install a
+                        // global click monitor so a click outside closes it.
+                        self.installStickyTerminalClickMonitor()
                     }
                 }
             }
@@ -1660,7 +1689,7 @@ struct ContentView: View {
     }
 
     private func shouldPreventAutoClose() -> Bool {
-        coordinator.firstLaunch || hasAnyActivePopovers() || vm.isAutoCloseSuppressed || SharingStateManager.shared.preventNotchClose
+        coordinator.firstLaunch || hasAnyActivePopovers() || vm.isAutoCloseSuppressed || SharingStateManager.shared.preventNotchClose || (Defaults[.terminalStickyMode] && coordinator.currentView == .terminal)
     }
     
     // Helper to prevent rapid haptic feedback

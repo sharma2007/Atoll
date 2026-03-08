@@ -5476,6 +5476,29 @@ struct Shortcuts: View {
                 Section {
                     HStack {
                         VStack(alignment: .leading) {
+                            KeyboardShortcuts.Recorder("Toggle Terminal Tab:", name: .toggleTerminalTab)
+                                .disabled(!enableShortcuts || !Defaults[.enableTerminalFeature])
+                            if !Defaults[.enableTerminalFeature] {
+                                Text("Terminal feature is disabled")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.top, 2)
+                            }
+                        }
+                        Spacer()
+                    }
+                } header: {
+                    Text("Terminal")
+                } footer: {
+                    Text("Opens the terminal tab in the notch. Default is Ctrl+`. Only works when terminal feature is enabled.")
+                        .multilineTextAlignment(.trailing)
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
+                }
+                
+                Section {
+                    HStack {
+                        VStack(alignment: .leading) {
                             KeyboardShortcuts.Recorder("Color Picker Panel:", name: .colorPickerPanel)
                                 .disabled(!enableShortcuts || !enableColorPickerFeature)
                             if !enableColorPickerFeature {
@@ -7218,6 +7241,18 @@ struct TerminalSettings: View {
             Section {
                 Defaults.Toggle("Enable terminal", key: .enableTerminalFeature)
                     .settingsHighlight(id: highlightID("Enable terminal"))
+
+                if enableTerminalFeature {
+                    Defaults.Toggle(key: .terminalStickyMode) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Keep terminal open until clicked outside")
+                            Text("Prevents the terminal from closing when the cursor accidentally leaves the notch area.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .settingsHighlight(id: highlightID("Keep terminal open"))
+                }
             } header: {
                 Text("General")
             } footer: {

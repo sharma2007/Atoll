@@ -894,6 +894,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             ColorPickerPanelManager.shared.toggleColorPickerPanel()
         }
 
+        KeyboardShortcuts.onKeyDown(for: .toggleTerminalTab) { [weak self] in
+            guard let self else { return }
+            guard Defaults[.enableShortcuts], Defaults[.enableTerminalFeature] else { return }
+
+            if vm.notchState == .closed {
+                vm.open()
+                coordinator.currentView = .terminal
+            } else {
+                if coordinator.currentView == .terminal {
+                    vm.close()
+                } else {
+                    coordinator.currentView = .terminal
+                }
+            }
+        }
+
         KeyboardShortcuts.onKeyDown(for: .screenAssistantPanel) { [weak self] in
             guard let self else { return }
             guard Defaults[.enableShortcuts], Defaults[.enableScreenAssistant] else { return }
@@ -920,6 +936,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         updateShortcut(.clipboardHistoryPanel, isEnabled: Defaults[.enableShortcuts] && Defaults[.enableClipboardManager])
         updateShortcut(.colorPickerPanel, isEnabled: Defaults[.enableShortcuts] && Defaults[.enableColorPickerFeature])
         updateShortcut(.screenAssistantPanel, isEnabled: Defaults[.enableShortcuts] && Defaults[.enableScreenAssistant])
+        updateShortcut(.toggleTerminalTab, isEnabled: Defaults[.enableShortcuts] && Defaults[.enableTerminalFeature])
     }
 
     @MainActor
