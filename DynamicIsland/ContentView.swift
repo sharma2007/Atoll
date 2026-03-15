@@ -150,6 +150,7 @@ struct ContentView: View {
     @State private var hoverClickMonitor: Any?
     @State private var hoverClickLocalMonitor: Any?
     @State private var stickyTerminalClickMonitor: Any?
+    @State private var hiddenEdgeHoverPollingTask: Task<Void, Never>?
 
     @State private var gestureProgress: CGFloat = .zero
     @State private var skipGestureActiveDirection: MusicManager.SkipDirection?
@@ -284,6 +285,13 @@ struct ContentView: View {
     /// Temporarily reveals the notch when a sneakPeek HUD (volume, brightness, music, etc.) is active.
     private var shouldHideUntilHover: Bool {
         hideNonNotchUntilHover && isNonNotchScreen && vm.notchState == .closed && !isSneakPeekVisibleOnCurrentScreen
+    }
+
+    /// Whether the fallback top-edge hover detector should run.
+    /// This is only needed when the notch is fully hidden off-screen and
+    /// regular `.onHover` hit-testing may not trigger reliably.
+    private var shouldUseHiddenEdgeHoverPolling: Bool {
+        shouldHideUntilHover && !lockScreenManager.isLocked
     }
 
     /// Pill shape for Dynamic Island mode with animated corner radius transitions.
@@ -535,6 +543,7 @@ struct ContentView: View {
                 clearMusicControlVisibilityDeadline()
             }
             enqueueMusicControlWindowSync(forceRefresh: true)
+            startHiddenEdgeHoverPolling()
         }
         .onChange(of: vm.notchState) { _, state in
             if state == .open {
@@ -626,6 +635,7 @@ struct ContentView: View {
             hoverTask?.cancel()
             stopHoverClickMonitor()
             removeStickyTerminalClickMonitor()
+            stopHiddenEdgeHoverPolling()
             cancelMusicControlWindowSync()
             hideMusicControlWindow()
             cancelMusicControlVisibilityTimer()
@@ -1561,6 +1571,48 @@ struct ContentView: View {
         withAnimation(.bouncy.speed(1.2)) {
             vm.open()
         }
+    }
+
+    private func hiddenHoverActivationContainsMouse(_ location: NSPoint = NSEvent.mouseLocation) -> Bool {
+        guard let screen = NSScreen.screens.first(where: { $0.localizedName == currentScreenName }) else {
+            return false
+        }
+
+        let horizontalPadding: CGFloat = 8
+        let activationWidth = vm.closedNotchSize.width + horizontalPadding * 2
+        let activationHeight = max(vm.closedNotchSize.height + zeroHeightHoverPadding, 14)
+        let activationRect = CGRect(
+            x: screen.frame.midX - activationWidth / 2,
+            y: screen.frame.maxY - activationHeight,
+            width: activationWidth,
+            height: activationHeight
+        )
+
+        return activationRect.contains(location)
+    }
+
+    private func startHiddenEdgeHoverPolling() {
+        guard hiddenEdgeHoverPollingTask == nil else { return }
+
+        hiddenEdgeHoverPollingTask = Task { @MainActor in
+            while !Task.isCancelled {
+                if self.shouldUseHiddenEdgeHoverPolling {
+                    let hovering = self.hiddenHoverActivationContainsMouse()
+                    if hovering != self.isHovering {
+                        self.handleHover(hovering)
+                    }
+                }
+
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+
+            self.hiddenEdgeHoverPollingTask = nil
+        }
+    }
+
+    private func stopHiddenEdgeHoverPolling() {
+        hiddenEdgeHoverPollingTask?.cancel()
+        hiddenEdgeHoverPollingTask = nil
     }
 
     private func startHoverClickMonitor() {
