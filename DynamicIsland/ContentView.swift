@@ -1549,7 +1549,6 @@ struct ContentView: View {
                         coordinator.currentView = .shelf
                         openNotch()
                     } else if !isTargeted {
-                        print("DROP EVENT", vm.dropEvent)
                         if vm.dropEvent {
                             vm.dropEvent = false
                             return

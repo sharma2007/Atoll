@@ -28,7 +28,11 @@ import UniformTypeIdentifiers
 struct FileShareView: View {
     @EnvironmentObject private var vm: DynamicIslandViewModel
     @StateObject private var quickShare = QuickShareService.shared
+    @StateObject private var localSend = LocalSendService.shared
     @Default(.quickShareProvider) var quickShareProvider: String
+    @State private var showQuickSharePopover = false
+    @State private var isGearHover = false
+    @State private var autoCloseToken = UUID()
 
     @State private var hostView: NSView?
     @State private var interactionNonce: UUID = .init()
@@ -38,10 +42,17 @@ struct FileShareView: View {
         quickShare.availableProviders.first(where: { $0.id == quickShareProvider }) ?? QuickShareProvider(id: "System Share Menu", imageData: nil, supportsRawText: true)
     }
 
+    private var notchToggleProviders: [QuickShareProvider] {
+        quickShare.availableProviders.filter { $0.id == "AirDrop" || $0.id == "LocalSend" }
+    }
+
     var body: some View {
         dropArea
             .background(NSViewHost(view: $hostView))
-            .onAppear { quickShare.ensureDiscovered() }
+            .onAppear {
+                quickShare.ensureDiscovered()
+                localSend.startDiscovery()
+            }
             .onDrop(of: [.fileURL, .url, .utf8PlainText, .plainText, .data, .image], isTargeted: $vm.dropZoneTargeting) { providers in
                 interactionNonce = .init()
                 vm.dropEvent = true
@@ -49,8 +60,10 @@ struct FileShareView: View {
                 return true
             }
             .onTapGesture {
-                Task {
-                    await handleClick()
+                guard quickShare.availableProviders.first(where: { $0.id == quickShareProvider }) != nil else { return }
+                // Only open picker on taps when AirDrop or LocalSend is selected
+                if quickShareProvider == "AirDrop" || quickShareProvider == "LocalSend" {
+                    Task { await handleClick() }
                 }
             }
     }
@@ -85,12 +98,16 @@ struct FileShareView: View {
                         if let imgData = selectedProvider.imageData, let nsImg = NSImage(data: imgData) {
                             Image(nsImage: nsImg)
                                 .resizable()
-                                .aspectRatio(contentMode: .fit)
+                                .scaledToFit()
+                                .frame(width: 34, height: 34)
+                                .clipped()
                         } else {
                             Image(systemName: "square.and.arrow.up")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 34, height: 34)
                         }
                     }
-                    .frame(width: 34, height: 34)
                         .foregroundStyle(
                             vm.dropZoneTargeting ? Color.accentColor : Color.gray
                         )
@@ -104,11 +121,159 @@ struct FileShareView: View {
                     .font(.system(.headline, design: .rounded))
                     .foregroundColor(.white.opacity(0.8))
                     .multilineTextAlignment(.center)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                     .frame(maxWidth: .infinity)
+
+                // Share mode selector moved to the notch tab gear icon
+
+                if selectedProvider.id == "LocalSend" {
+                    HStack(spacing: 8) {
+                        Menu {
+                            if localSend.devices.isEmpty {
+                                Text("No devices found")
+                            } else {
+                                ForEach(localSend.devices) { device in
+                                    Button(device.displayName) {
+                                        localSend.selectedDeviceID = device.id
+                                    }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "iphone.and.arrow.forward")
+                                    .font(.system(size: 11, weight: .semibold))
+                                Text(localSend.devices.first(where: { $0.id == localSend.selectedDeviceID })?.displayName ?? "Select device")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .lineLimit(1)
+                            }
+                            .foregroundStyle(.white.opacity(0.9))
+                        }
+
+                        Button {
+                            localSend.refreshDeviceScan()
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.9))
+                                .rotationEffect(.degrees(localSend.isRefreshing ? 360 : 0))
+                                .animation(
+                                    localSend.isRefreshing
+                                        ? .linear(duration: 0.85).repeatForever(autoreverses: false)
+                                        : .easeOut(duration: 0.2),
+                                    value: localSend.isRefreshing
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(localSend.isRefreshing)
+                        .help("Refresh devices")
+                    }
+
+                }
 
             }
             .padding(18)
             .frame(maxWidth: .infinity)
+
+            // Gear pinned to top-left corner of quick share box
+            VStack {
+                HStack {
+                    Button {
+                        // Ensure notch stays open immediately when opening the selector
+                        vm.setAutoCloseSuppression(true, token: autoCloseToken)
+                        quickShare.ensureDiscovered()
+                        showQuickSharePopover.toggle()
+                    } label: {
+                        Image(systemName: "gear")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: 14, height: 14)
+                            .padding(8)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(isGearHover ? Color(.windowBackgroundColor).opacity(0.12) : Color.clear))
+                            .foregroundColor(isGearHover ? .accentColor : .gray)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .onHover { hovering in
+                        isGearHover = hovering
+                        vm.setAutoCloseSuppression(hovering, token: autoCloseToken)
+                    }
+                    .popover(isPresented: $showQuickSharePopover, arrowEdge: .bottom) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Quick Share")
+                                .font(.headline)
+
+                            Picker("Quick Share Service", selection: $quickShareProvider) {
+                                ForEach(quickShare.availableProviders, id: \.id) { provider in
+                                    HStack(spacing: 8) {
+                                        Group {
+                                            if let imgData = provider.imageData, let nsImg = NSImage(data: imgData) {
+                                                Image(nsImage: nsImg)
+                                                    .resizable()
+                                                    .aspectRatio(contentMode: .fit)
+                                            } else {
+                                                Image(systemName: "square.and.arrow.up")
+                                            }
+                                        }
+                                        .frame(width: 16, height: 16)
+                                        .foregroundColor(.accentColor)
+
+                                        Text(provider.id)
+                                            .lineLimit(1)
+                                            .truncationMode(.tail)
+                                            .layoutPriority(1)
+                                            .fixedSize(horizontal: true, vertical: false)
+                                    }
+                                    .tag(provider.id)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                            .frame(minWidth: 260)
+
+                            if let selected = quickShare.availableProviders.first(where: { $0.id == quickShareProvider }) {
+                                HStack(alignment: .top, spacing: 8) {
+                                    Group {
+                                        if let imgData = selected.imageData, let nsImg = NSImage(data: imgData) {
+                                            Image(nsImage: nsImg)
+                                                .resizable()
+                                                .frame(width: 20, height: 20)
+                                        } else {
+                                            Image(systemName: "square.and.arrow.up")
+                                        }
+                                    }
+                                    .foregroundColor(.accentColor)
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Currently: \(selected.id)")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                            .truncationMode(.tail)
+                                            .layoutPriority(1)
+                                            .fixedSize(horizontal: true, vertical: false)
+                                        Text("Files shared from the shelf will use this service")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                        .padding()
+                        .onAppear { vm.setAutoCloseSuppression(true, token: autoCloseToken) }
+                        .onDisappear {
+                            // Delay clearing suppression slightly so the close click doesn't immediately close the notch
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                vm.setAutoCloseSuppression(false, token: autoCloseToken)
+                            }
+                        }
+                        .onHover { hovering in vm.setAutoCloseSuppression(hovering, token: autoCloseToken) }
+                    }
+                    .padding(.leading, 8)
+                    .padding(.top, 8)
+
+                    Spacer()
+                }
+                Spacer()
+            }
             
             // Loading overlay
             if isProcessing || quickShare.isPickerOpen {
@@ -119,6 +284,38 @@ struct FileShareView: View {
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             .scaleEffect(0.8)
                     )
+            }
+
+            if selectedProvider.id == "LocalSend" && localSend.isSending {
+                VStack {
+                    HStack {
+                        Spacer()
+                        ZStack {
+                            Circle()
+                                .stroke(Color.white.opacity(0.16), lineWidth: 3)
+
+                            Circle()
+                                .trim(from: 0, to: min(max(localSend.sendProgress, 0), 1))
+                                .stroke(
+                                    Color.white,
+                                    style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                                )
+                                .rotationEffect(.degrees(-90))
+                                .animation(.easeInOut(duration: 0.2), value: localSend.sendProgress)
+
+                            if localSend.sendProgress > 0.99 {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+                        }
+                        .frame(width: 24, height: 24)
+                        .padding(.top, 10)
+                        .padding(.trailing, 10)
+                    }
+                    Spacer()
+                }
+                .transition(.opacity)
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: 12))
