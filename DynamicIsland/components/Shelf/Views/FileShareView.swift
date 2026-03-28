@@ -31,12 +31,14 @@ struct FileShareView: View {
     @StateObject private var localSend = LocalSendService.shared
     @Default(.quickShareProvider) var quickShareProvider: String
     @State private var showQuickSharePopover = false
-    @State private var isGearHover = false
+    @State private var isSwitchHover = false
     @State private var autoCloseToken = UUID()
 
     @State private var hostView: NSView?
     @State private var interactionNonce: UUID = .init()
     @State private var isProcessing = false
+    @State private var pendingDropProviders: [NSItemProvider]?
+    @State private var showLocalSendPicker = false
     
     private var selectedProvider: QuickShareProvider {
         quickShare.availableProviders.first(where: { $0.id == quickShareProvider }) ?? QuickShareProvider(id: "System Share Menu", imageData: nil, supportsRawText: true)
@@ -56,7 +58,12 @@ struct FileShareView: View {
             .onDrop(of: [.fileURL, .url, .utf8PlainText, .plainText, .data, .image], isTargeted: $vm.dropZoneTargeting) { providers in
                 interactionNonce = .init()
                 vm.dropEvent = true
-                Task { await handleDrop(providers) }
+                if selectedProvider.id == "LocalSend" {
+                    pendingDropProviders = providers
+                    showLocalSendPicker = true
+                } else {
+                    Task { await handleDrop(providers) }
+                }
                 return true
             }
             .onTapGesture {
@@ -125,76 +132,30 @@ struct FileShareView: View {
                     .truncationMode(.tail)
                     .frame(maxWidth: .infinity)
 
-                // Share mode selector moved to the notch tab gear icon
-
-                if selectedProvider.id == "LocalSend" {
-                    HStack(spacing: 8) {
-                        Menu {
-                            if localSend.devices.isEmpty {
-                                Text("No devices found")
-                            } else {
-                                ForEach(localSend.devices) { device in
-                                    Button(device.displayName) {
-                                        localSend.selectedDeviceID = device.id
-                                    }
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Image(systemName: "iphone.and.arrow.forward")
-                                    .font(.system(size: 11, weight: .semibold))
-                                Text(localSend.devices.first(where: { $0.id == localSend.selectedDeviceID })?.displayName ?? "Select device")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .lineLimit(1)
-                            }
-                            .foregroundStyle(.white.opacity(0.9))
-                        }
-
-                        Button {
-                            localSend.refreshDeviceScan()
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.9))
-                                .rotationEffect(.degrees(localSend.isRefreshing ? 360 : 0))
-                                .animation(
-                                    localSend.isRefreshing
-                                        ? .linear(duration: 0.85).repeatForever(autoreverses: false)
-                                        : .easeOut(duration: 0.2),
-                                    value: localSend.isRefreshing
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(localSend.isRefreshing)
-                        .help("Refresh devices")
-                    }
-
-                }
-
             }
             .padding(18)
             .frame(maxWidth: .infinity)
 
-            // Gear pinned to top-left corner of quick share box
+            // Switch button pinned to top-right corner
             VStack {
                 HStack {
+                    Spacer()
                     Button {
-                        // Ensure notch stays open immediately when opening the selector
                         vm.setAutoCloseSuppression(true, token: autoCloseToken)
                         quickShare.ensureDiscovered()
                         showQuickSharePopover.toggle()
                     } label: {
-                        Image(systemName: "gear")
+                        Image(systemName: "switch.2")
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .frame(width: 14, height: 14)
                             .padding(8)
-                            .background(RoundedRectangle(cornerRadius: 8).fill(isGearHover ? Color(.windowBackgroundColor).opacity(0.12) : Color.clear))
-                            .foregroundColor(isGearHover ? .accentColor : .gray)
+                            .background(RoundedRectangle(cornerRadius: 8).fill(isSwitchHover ? Color(.windowBackgroundColor).opacity(0.12) : Color.clear))
+                            .foregroundColor(isSwitchHover ? .accentColor : .gray)
                     }
                     .buttonStyle(PlainButtonStyle())
                     .onHover { hovering in
-                        isGearHover = hovering
+                        isSwitchHover = hovering
                         vm.setAutoCloseSuppression(hovering, token: autoCloseToken)
                     }
                     .popover(isPresented: $showQuickSharePopover, arrowEdge: .bottom) {
@@ -267,10 +228,8 @@ struct FileShareView: View {
                         }
                         .onHover { hovering in vm.setAutoCloseSuppression(hovering, token: autoCloseToken) }
                     }
-                    .padding(.leading, 8)
+                    .padding(.trailing, 8)
                     .padding(.top, 8)
-
-                    Spacer()
                 }
                 Spacer()
             }
@@ -319,6 +278,28 @@ struct FileShareView: View {
             }
         }
         .contentShape(RoundedRectangle(cornerRadius: 12))
+        .onChange(of: showLocalSendPicker) { _, show in
+            if show {
+                LocalSendDevicePickerWindowManager.shared.show(
+                    onDeviceSelected: { device in
+                        localSend.selectedDeviceID = device.id
+                        showLocalSendPicker = false
+                        if let providers = pendingDropProviders {
+                            Task {
+                                await handleDrop(providers)
+                                pendingDropProviders = nil
+                            }
+                        }
+                    },
+                    onDismiss: {
+                        showLocalSendPicker = false
+                        pendingDropProviders = nil
+                    }
+                )
+            } else {
+                LocalSendDevicePickerWindowManager.shared.hide()
+            }
+        }
     }
 
     // MARK: - Actions

@@ -58,17 +58,17 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		7EA69B212F5B100000EB2D16 /* Exceptions for "DynamicIsland" folder in "DynamicIsland" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = F54406E62CD4987A00C7AFD9 /* DynamicIsland */;
-		};
 		7EA69B1E2F5AE61200EB2D16 /* Exceptions for "Contents" folder in "DynamicIsland" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Helpers/NowPlayingTestClient,
+			);
+			target = F54406E62CD4987A00C7AFD9 /* DynamicIsland */;
+		};
+		7EA69B212F5B100000EB2D16 /* Exceptions for "DynamicIsland" folder in "DynamicIsland" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
 			);
 			target = F54406E62CD4987A00C7AFD9 /* DynamicIsland */;
 		};
@@ -454,7 +454,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_ASSET_PATHS = "\"DynamicIsland/Preview Content\"";
-				DEVELOPMENT_TEAM = 5W5BDQQ32W;
+				DEVELOPMENT_TEAM = 9Y64TRM77N;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -526,7 +526,7 @@
 				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_ASSET_PATHS = "\"DynamicIsland/Preview Content\"";
 				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=macosx*]" = 5W5BDQQ32W;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = 9Y64TRM77N;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;

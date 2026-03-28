@@ -29,7 +29,7 @@ struct AirDropView: View {
     @Default(.quickShareProvider) var quickShareProvider
     @StateObject private var quickShareService = QuickShareService.shared
     @State private var showShareSettings = false
-    @State private var isGearHover = false
+    @State private var isSwitchHover = false
     
     var body: some View {
         dropArea
@@ -50,27 +50,26 @@ struct AirDropView: View {
                 ZStack {
                     dropLabel
 
-                    // Gear in the bottom-right for quick-share settings
+                    // Switch button in the top-right for quick-share settings
                     VStack {
-                        Spacer()
                         HStack {
                             Spacer()
                             Button {
                                 quickShareService.ensureDiscovered()
                                 showShareSettings.toggle()
                             } label: {
-                                Image(systemName: "gearshape")
+                                Image(systemName: "switch.2")
                                     .resizable()
                                     .aspectRatio(contentMode: .fit)
                                     .frame(width: 14, height: 14)
                                     .padding(8)
                                     .background(
                                         RoundedRectangle(cornerRadius: 8)
-                                            .fill(isGearHover ? Color(.windowBackgroundColor).opacity(0.12) : Color.clear)
+                                            .fill(isSwitchHover ? Color(.windowBackgroundColor).opacity(0.12) : Color.clear)
                                     )
-                                    .foregroundColor(isGearHover ? .accentColor : .gray)
+                                    .foregroundColor(isSwitchHover ? .accentColor : .gray)
                                     .contentShape(Rectangle())
-                                    .onHover { over in isGearHover = over }
+                                    .onHover { over in isSwitchHover = over }
                                     .help("Quick Share settings")
                             }
                             .buttonStyle(.plain)
@@ -132,8 +131,10 @@ struct AirDropView: View {
                                 }
                                 .padding()
                             }
-                            .padding(8)
+                            .padding(.trailing, 8)
+                            .padding(.top, 8)
                         }
+                        Spacer()
                     }
                 }
             }
