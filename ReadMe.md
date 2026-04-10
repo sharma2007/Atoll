@@ -78,6 +78,7 @@ Atoll turns the MacBook notch into a focused command surface for media, system i
 - Hover near the notch to expand; click to enter controls.
 - Use tabs for Media, Stats, Timers, Clipboard, and more.
 - Adjust layout, appearance, and shortcuts from Settings.
+- Add files to Shelf from Terminal: `open -a Atoll /path/to/file`.
 
 ## Settings
 - Choose appearance, animation style, and per‑feature toggles.

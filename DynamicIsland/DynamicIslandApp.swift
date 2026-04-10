@@ -154,6 +154,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidBecomeActive(_ notification: Notification) {
         installTopMenuItemsIfNeeded()
     }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        _ = handleIncomingShelfURLs(urls)
+    }
+
+    func application(_ sender: NSApplication, openFile filename: String) -> Bool {
+        handleIncomingShelfURLs([URL(fileURLWithPath: filename)])
+    }
+
+    private func handleIncomingShelfURLs(_ urls: [URL]) -> Bool {
+        let fileURLs = urls.filter(\.isFileURL)
+        guard !fileURLs.isEmpty else { return false }
+
+        Task { @MainActor [weak self] in
+            let items = await ShelfDropService.items(from: fileURLs)
+            guard !items.isEmpty else { return }
+
+            ShelfStateViewModel.shared.add(items)
+            self?.coordinator.currentView = .shelf
+        }
+
+        return true
+    }
     
     /// Setup observers for music player state changes to restart AudioTap capture
     private func setupAudioTapMusicObservers() {
