@@ -1672,6 +1672,7 @@ struct ContentView: View {
         let horizontalPadding: CGFloat = 8
         let activationWidth = vm.closedNotchSize.width + horizontalPadding * 2
         let activationHeight = max(vm.closedNotchSize.height + zeroHeightHoverPadding, 14)
+
         let activationRect = CGRect(
             x: screen.frame.midX - activationWidth / 2,
             y: screen.frame.maxY - activationHeight,

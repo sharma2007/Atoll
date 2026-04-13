@@ -3830,7 +3830,9 @@ struct LiveActivitiesSettings: View {
 
 struct Appearance: View {
     @ObservedObject var coordinator = DynamicIslandViewCoordinator.shared
+    @ObservedObject var webcamManager = WebcamManager.shared
     @Default(.mirrorShape) var mirrorShape
+    @Default(.selectedCameraID) var selectedCameraID
     @Default(.sliderColor) var sliderColor
     @Default(.useMusicVisualizer) var useMusicVisualizer
     @Default(.customVisualizers) var customVisualizers
@@ -4237,6 +4239,22 @@ struct Appearance: View {
                         .tag(MirrorShapeEnum.rectangle)
                 }
                 .settingsHighlight(id: highlightID("Mirror shape"))
+
+                if webcamManager.cameraAvailable {
+                    Picker("Mirror Camera", selection: $selectedCameraID) {
+                        ForEach(webcamManager.availableCameras, id: \.uniqueID) { device in
+                            Text(device.localizedName)
+                                .tag(device.uniqueID)
+                        }
+                    }
+                    .onChange(of: selectedCameraID) { _, _ in
+                        if Defaults[.showMirror] {
+                            webcamManager.stopSession()
+                            webcamManager.startSession()
+                        }
+                    }
+                    .settingsHighlight(id: highlightID("Mirror Camera"))
+                }
                 Defaults.Toggle(key: .showNotHumanFace) {
                     Text("Idle Animation")
                 }
