@@ -117,6 +117,7 @@ class ModelSelectionPanel: NSPanel {
 
 // MARK: - Model Selection View
 struct ModelSelectionView: View {
+    private let primaryProviders: [AIModelProvider] = [.gemini, .openai, .claude, .local]
     @State private var selectedProvider: AIModelProvider = Defaults[.selectedAIProvider]
     @State private var selectedModel: AIModel? = Defaults[.selectedAIModel]
     @State private var enableThinking: Bool = Defaults[.enableThinkingMode]
@@ -171,7 +172,7 @@ struct ModelSelectionView: View {
                             .foregroundColor(.primary)
                         
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 12) {
-                            ForEach(AIModelProvider.allCases.filter { $0 != .groq }) { provider in
+                            ForEach(primaryProviders) { provider in
                                 ProviderCard(
                                     provider: provider,
                                     isSelected: selectedProvider == provider,
