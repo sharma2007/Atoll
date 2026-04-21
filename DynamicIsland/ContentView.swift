@@ -1034,11 +1034,13 @@ struct ContentView: View {
                 .overlay(
                     HStack(alignment: .top) {
                         if(coordinator.expandingView.show && coordinator.expandingView.type == .music) {
-                            MarqueeText(
-                                .constant(musicManager.songTitle),
+                            MusicTitleMarqueeView(
+                                text: musicManager.songTitle,
+                                isExplicit: musicManager.isCurrentTrackExplicit,
                                 textColor: Defaults[.coloredSpectrogram] ? Color(nsColor: musicManager.avgColor) : Color.gray,
                                 minDuration: 0.4,
-                                frameWidth: max(0, (effectiveCenterWidth - vm.closedNotchSize.width) / 2 - 12)
+                                frameWidth: max(0, (effectiveCenterWidth - vm.closedNotchSize.width) / 2 - 12),
+                                badgeHeight: 13
                             )
                             .padding(.leading, 8)
                             .opacity((coordinator.expandingView.show && Defaults[.enableSneakPeek] && Defaults[.sneakPeekStyles] == .inline) ? 1 : 0)

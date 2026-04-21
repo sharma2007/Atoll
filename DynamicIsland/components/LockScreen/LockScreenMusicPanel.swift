@@ -255,19 +255,34 @@ struct LockScreenMusicPanel: View {
         HStack(alignment: .center, spacing: 16) {
             albumArtButton(size: 60, cornerRadius: collapsedAlbumArtCornerRadius)
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(musicManager.songTitle.isEmpty ? "No Music Playing" : musicManager.songTitle)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
+            GeometryReader { geo in
+                VStack(alignment: .leading, spacing: 1) {
+                    MusicTitleMarqueeView(
+                        text: musicManager.songTitle.isEmpty ? "No Music Playing" : musicManager.songTitle,
+                        isExplicit: !musicManager.songTitle.isEmpty && musicManager.isCurrentTrackExplicit,
+                        font: .system(size: 12, weight: .semibold),
+                        nsFont: .subheadline,
+                        textColor: .white,
+                        minDuration: 0.45,
+                        frameWidth: geo.size.width,
+                        badgeSpacing: 5,
+                        badgeLabel: "E",
+                        badgeHeight: 13,
+                        badgeForegroundColor: Color.black.opacity(0.72),
+                        badgeBackgroundColor: Color.white.opacity(0.46),
+                        badgeHorizontalPadding: 4,
+                        badgeMinWidth: 14,
+                        badgeCornerRadius: 4
+                    )
 
-                Text(musicManager.artistName.isEmpty ? "Unknown Artist" : musicManager.artistName)
-                    .font(.system(size: 10, weight: .regular))
-                    .foregroundColor(Defaults[.playerColorTinting] ? Color(nsColor: musicManager.avgColor).ensureMinimumBrightness(factor: 0.6) : .gray)
-                    .lineLimit(1)
+                    Text(musicManager.artistName.isEmpty ? "Unknown Artist" : musicManager.artistName)
+                        .font(.system(size: 10, weight: .regular))
+                        .foregroundColor(Defaults[.playerColorTinting] ? Color(nsColor: musicManager.avgColor).ensureMinimumBrightness(factor: 0.6) : .gray)
+                        .lineLimit(1)
+                }
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .leading)
             }
-
-            Spacer()
+            .frame(maxWidth: .infinity, minHeight: 30, maxHeight: 30, alignment: .leading)
 
             visualizer(width: 20, height: 16)
         }
@@ -276,19 +291,34 @@ struct LockScreenMusicPanel: View {
 
     private var expandedHeader: some View {
         HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(musicManager.songTitle.isEmpty ? "No Music Playing" : musicManager.songTitle)
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
-                    .lineLimit(2)
+            GeometryReader { geo in
+                VStack(alignment: .leading, spacing: 6) {
+                    MusicTitleMarqueeView(
+                        text: musicManager.songTitle.isEmpty ? "No Music Playing" : musicManager.songTitle,
+                        isExplicit: !musicManager.songTitle.isEmpty && musicManager.isCurrentTrackExplicit,
+                        font: .system(size: 18, weight: .semibold),
+                        nsFont: .title3,
+                        textColor: .white,
+                        minDuration: 0.55,
+                        frameWidth: geo.size.width,
+                        badgeSpacing: 6,
+                        badgeLabel: "E",
+                        badgeHeight: 16,
+                        badgeForegroundColor: Color.black.opacity(0.74),
+                        badgeBackgroundColor: Color.white.opacity(0.5),
+                        badgeHorizontalPadding: 5,
+                        badgeMinWidth: 17,
+                        badgeCornerRadius: 5
+                    )
 
-                Text(musicManager.artistName.isEmpty ? "Unknown Artist" : musicManager.artistName)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(Defaults[.playerColorTinting] ? Color(nsColor: musicManager.avgColor).ensureMinimumBrightness(factor: 0.7) : .gray)
-                    .lineLimit(2)
+                    Text(musicManager.artistName.isEmpty ? "Unknown Artist" : musicManager.artistName)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(Defaults[.playerColorTinting] ? Color(nsColor: musicManager.avgColor).ensureMinimumBrightness(factor: 0.7) : .gray)
+                        .lineLimit(2)
+                }
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .leading)
             }
-
-            Spacer()
+            .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
 
             visualizer(width: 24, height: 20)
         }
