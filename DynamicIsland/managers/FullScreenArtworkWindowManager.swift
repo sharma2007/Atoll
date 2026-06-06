@@ -691,7 +691,11 @@ final class FullScreenArtworkWindowManager: ObservableObject {
     }
 
     private func shouldUseSpotifyFallbackLayout(videoURL: URL?) -> Bool {
-        guard MusicManager.shared.bundleIdentifier == SpotifyController.bundleIdentifier else {
+        let bundle = MusicManager.shared.bundleIdentifier
+        if bundle == AmazonMusicController.bundleIdentifier {
+            return true
+        }
+        guard bundle == SpotifyController.bundleIdentifier else {
             return false
         }
 
